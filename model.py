@@ -58,6 +58,3 @@ supervised_model = UNet2DConditionModel(
     class_embeddings_concat=True,
     cross_attention_dim=256
 )
-
-if __name__ == '__main__':
-    print(supervised_model)
