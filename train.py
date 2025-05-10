@@ -108,6 +108,9 @@ def train_unet(unet:nn.Module):
                 test_losses.append(test_loss.item())
                 
             print(f'Epoch: {epoch+1}, Test loss: {np.mean(test_losses)}')
+        
+    
+    draw_loss(train_losses=losses,test_losses=test_losses)
             
 
     
