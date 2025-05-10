@@ -7,12 +7,12 @@ from config import TrainingConfig
 config = TrainingConfig()
 
 
-def process_ds2hug(example):
-    img,label = example
-    return {
-        "pixel_values": img,
-        "class_label": label
-    }
+# def process_ds2hug(example):
+#     img,label = example
+#     return {
+#         "pixel_values": img,
+#         "class_label": label
+#     }
 
 # 图像预处理
 transform = transforms.Compose([
@@ -24,17 +24,17 @@ transform = transforms.Compose([
 
 
 # 加载数据集
-pneumoniaMNIST_train = PneumoniaMNIST(root=config.root_path,split='train',transform=transform,download=True)
-pneumoniaMNIST_test = PneumoniaMNIST(root=config.root_path,split='test',transform=transform,download=True)
+train_dataset = PneumoniaMNIST(root=config.root_path,split='train',transform=transform,download=True,size=64)
+test_dataset = PneumoniaMNIST(root=config.root_path,split='test',transform=transform,download=True,size=64)
 
 
-# 
-pneumoniaMNIST_train = [process_ds2hug(i) for i in pneumoniaMNIST_train]
-pneumoniaMNIST_test= [process_ds2hug(i) for i in pneumoniaMNIST_test]
+# # 
+# train_dataset = [process_ds2hug(i) for i in train_dataset]
+# test_dataset= [process_ds2hug(i) for i in test_dataset]
 
-# 转为 Huggingface Dataset
-train_dataset = Dataset.from_list(pneumoniaMNIST_train)
-test_dataset = Dataset.from_list(pneumoniaMNIST_test)
+# # 转为 Huggingface Dataset
+# train_dataset = Dataset.from_list(train_dataset)
+# test_dataset = Dataset.from_list(test_dataset)
 
 train_dataloader = DataLoader(train_dataset,batch_size=config.train_batch_size,shuffle=True)
 test_dataloader = DataLoader(test_dataset,batch_size=config.train_batch_size,shuffle=False)

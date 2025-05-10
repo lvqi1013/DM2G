@@ -1,6 +1,5 @@
 import torch
 import os
-from utils import create_path_if_not_exists
 
 class TrainingConfig():
     def __init__(self):
@@ -22,12 +21,5 @@ class TrainingConfig():
         self.lr_warmup_steps = 500
         
         self.denoising_timesteps = 1000
-        
-        
-        
-        create_path_if_not_exists(self.unet_model_output_dir)
-    
-
-        
 
 config = TrainingConfig()

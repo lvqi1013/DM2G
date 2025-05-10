@@ -5,15 +5,16 @@ from diffusers.optimization import get_cosine_schedule_with_warmup
 from diffusers.training_utils import EMAModel
 from accelerate import Accelerator
 from diffusers import DDPMScheduler
-from data import train_dataloader,test_dataloader
+from data import *
 from config import config
 import numpy as np
 import os
 from tqdm import tqdm
 from utils import * 
+from model import supervised_model
 
 
-def train_unet(unet:nn.Module):
+def train_unet(unet:nn.Module,train_dataloader,test_dataloader):
     # 初始化DDPM噪声调度器，设置去噪时间步长
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
     
@@ -44,12 +45,12 @@ def train_unet(unet:nn.Module):
     model.train()
     for epoch in range(config.num_epochs):
         losses = []
-        for step,batch in enumerate(tqdm(train_dataloader)):
+        for step,(clean_images,labels) in enumerate(tqdm(train_dataloader)):
             # 获取干净的未加噪的数据并移动到训练设备
-            clean_images = batch['pixel_values'].to(config.device)
+            clean_images = clean_images.to(config.device)
             
             # 获取数据标签，并移动到训练设备上
-            labels = batch['class_label'].to(config.device)
+            labels = labels.to(config.device)
             
             # 保存原始标签数据
             origin_labels = labels
@@ -61,8 +62,10 @@ def train_unet(unet:nn.Module):
             bs = clean_images.shape[0]
             
             # 为每个样本随机采样一个时间步长
-            timesteps = torch.randint(low = 0,high = noise_scheduler.config.num_train_timesteps, size=(bs,), device=config.device).long()
+            timesteps = torch.randint(0,noise_scheduler.config.num_train_timesteps, (bs,), device=config.device).long()
             
+            print(timesteps.shape)
+            #TODO:解决timesteps的形状问题
             # 根据每个时间步长的噪声幅度，向干净的潜在表示中添加噪声
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
             
@@ -80,6 +83,7 @@ def train_unet(unet:nn.Module):
             
         # 打印当前epoch的训练损失
         print(f'Epoch: {epoch+1}, Train loss: {np.mean(losses)}')
+        generate(unet,noise_scheduler,epoch)
         torch.save(unet.state_dict(), f=os.path.join(config.output_dir,f'unet_epoch{epoch + 1}.pth'))
         
         test_losses = []
@@ -111,7 +115,10 @@ def train_unet(unet:nn.Module):
         
     
     draw_loss(train_losses=losses,test_losses=test_losses)
-            
+
+
+if __name__ == '__main__':
+    train_unet(supervised_model,train_dataloader,test_dataloader)
 
     
         
