@@ -1,3 +1,8 @@
+from utils import *
+from config import *
+from models import *
+from data import *
+
 import torch
 from torch import nn,optim
 import torch.nn.functional as F
@@ -11,10 +16,9 @@ import numpy as np
 import os
 from tqdm import tqdm
 from utils import * 
-from model import supervised_model
 
 
-def train_unet(unet:nn.Module,train_dataloader,test_dataloader):
+def train_unet():
     # 初始化DDPM噪声调度器，设置去噪时间步长
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
     
@@ -45,7 +49,8 @@ def train_unet(unet:nn.Module,train_dataloader,test_dataloader):
     model.train()
     for epoch in range(config.num_epochs):
         losses = []
-        for step,(clean_images,labels) in enumerate(tqdm(train_dataloader)):
+        #TODO:补充一个tqdm
+        for step,(clean_images,labels) in enumerate(train_dataloader):
             # 获取干净的未加噪的数据并移动到训练设备
             clean_images = clean_images.to(config.device)
             
@@ -63,14 +68,15 @@ def train_unet(unet:nn.Module,train_dataloader,test_dataloader):
             
             # 为每个样本随机采样一个时间步长
             timesteps = torch.randint(0,noise_scheduler.config.num_train_timesteps, (bs,), device=config.device).long()
+
+            print("time的形状为：",timesteps.shape)
+            print("timesetps的维度为：",len(timesteps.shape))
             
-            print(timesteps.shape)
-            #TODO:解决timesteps的形状问题
             # 根据每个时间步长的噪声幅度，向干净的潜在表示中添加噪声
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
             
             optimizer.zero_grad()
-            noise_pred = model(sample=noisy_images, timestep=timesteps, encoder_hidden_states=None, class_labels=labels)
+            noise_pred = unet(sample=noisy_images, timestep=timesteps, encoder_hidden_states=None, class_labels=labels)
             noise_pred = noise_pred.sample
             loss = F.mse_loss(noise_pred,noise)
             accelerator.backward(loss)
@@ -118,7 +124,7 @@ def train_unet(unet:nn.Module,train_dataloader,test_dataloader):
 
 
 if __name__ == '__main__':
-    train_unet(supervised_model,train_dataloader,test_dataloader)
+    train_unet()
 
     
         

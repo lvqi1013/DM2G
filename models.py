@@ -6,7 +6,7 @@ from config import TrainingConfig
 config = TrainingConfig()
 
 
-supervised_model = UNet2DConditionModel(
+unet = UNet2DConditionModel(
     sample_size=config.target_size,  # 图片的尺寸
     in_channels=1,  # 输入图像的通道数
     out_channels=1,  # 输出的通道数
