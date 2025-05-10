@@ -44,7 +44,7 @@ def train_unet(unet:nn.Module):
     model.train()
     for epoch in range(config.num_epochs):
         losses = []
-        for step,batch in enumerate(train_dataloader):
+        for step,batch in enumerate(tqdm(train_dataloader)):
             # 获取干净的未加噪的数据并移动到训练设备
             clean_images = batch['pixel_values'].to(config.device)
             
