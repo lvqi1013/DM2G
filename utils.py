@@ -1,5 +1,6 @@
 from diffusers import DDPMScheduler
 from torchvision import transforms
+import torch.nn.functional as F
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ def print_device(device):
 def create_path_if_not_exists(path):
     os.makedirs(path,exist_ok=True)
     
-def draw_loss(train_losses,test_losses):
+def draw_loss(train_losses,test_losses,save_path = None):
     
     create_path_if_not_exists(config.plot_path)
     
@@ -48,7 +49,7 @@ def draw_loss(train_losses,test_losses):
     plt.ylabel('Loss')
     
     plt.tight_layout()  # 调整布局
-    plt.savefig(os.path.join(config.plot_path, 'Train VS Test Loss.png'))
+    plt.savefig(os.path.join(save_path, 'Train VS Test Loss.png'))
     plt.close()  
 
 def revert_images(imgs: torch.tensor) -> np.array:
@@ -89,6 +90,71 @@ def generate(unet:nn.Module,
             recon_imgs = noise_scheduler.step(noise_pred, time, latents).prev_sample
             if time == 999 or time % 100 == 0:
                 plot(recon_imgs, time, epoch)
+
+def compute_vae_loss(images, outputs, latent_dist):
+    """
+    计算 VAE 的重建损失和 KL 散度损失
+    """
+    recon_loss = F.mse_loss(outputs, images, reduction='mean')
+    kl_loss = (latent_dist.kl() / (config.train_batch_size * config.img_size * config.img_size)).mean()
+    vae_loss = recon_loss + 0.5 * kl_loss
+    return vae_loss
+
+def plot_loss_curve(losses:list,title:str,save_path:str = None):
+    """
+    绘制并可选保存损失曲线图
+
+    参数:
+        losses (list): 每个 epoch 的平均损失
+        title (str): 图像标题
+        save_path (str or None): 如果提供路径，则保存图像
+    """
+    plt.figure(figsize=(8,5))
+    plt.plot(range(1,len(losses) + 1), losses,marker = 'o')
+    plt.title(title)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+        print(f'损失图像已保存至{save_path}')
+    plt.close()
+    
+    
+def plot_side_by_side(images_y: torch.tensor, images_pred: torch.tensor, 
+                      latents: torch.tensor, epoch: int):
+    """
+    可视化VAE模型的表现和他的潜在空间
+    """
+    images_y, images_pred = revert_images(images_y), revert_images(images_pred)
+    latents = revert_images(latents)
+    idx = np.random.randint(0, images_y.shape[0])
+    fig, axs = plt.subplots(1, 2)
+    
+    # Plot input image and Output image
+    axs[0].imshow(images_y[idx], cmap='gray')
+    axs[0].axis('off')  
+    axs[0].set_title("Input")
+    
+    axs[1].imshow(images_pred[idx], cmap='gray')
+    axs[1].axis('off')  
+    axs[1].set_title("Output")
+    plt.savefig(os.path.join(config.vae_plot_path, f'epoch_{epoch}_input_output.png'))
+    plt.clf()
+
+    latent_channels = latents.shape[1]
+    fig, axs = plt.subplots(1, 4)
+
+    # Plot the different latent channels
+    for i in range(latent_channels):
+        axs[i].imshow(latents[idx, i, :, :], cmap='gray')
+        axs[i].axis('off')  
+        axs[i].set_title(f"Latent channel: {i}", fontsize=8)       
+    plt.savefig(os.path.join(config.vae_plots_path, f'epoch_{epoch}_latent_channels.png'))
+    plt.clf()
+    
+
 
 if __name__ == '__main__':
     labels = torch.arange(10)
