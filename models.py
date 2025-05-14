@@ -18,9 +18,9 @@ vae = AutoencoderKL(
 
 
 unet = UNet2DConditionModel(
-    in_channels=1,
-    out_channels=1,
-    sample_size=64,
+    in_channels=config.latent_channels,
+    out_channels=config.latent_channels,
+    sample_size=16,
     
     layers_per_block=2,
     down_block_types=('AttnDownBlock2D', 'AttnDownBlock2D'),

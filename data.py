@@ -13,16 +13,7 @@ config = TrainingConfig()
 #         "pixel_values": img,
 #         "class_label": label
 #     }
-class IntLabelDataset(Dataset):
-    def __init__(self, original_dataset):
-        self.original_dataset = original_dataset
-        
-    def __len__(self):
-        return len(self.original_dataset)
-        
-    def __getitem__(self, idx):
-        img, label = self.original_dataset[idx]
-        return img, int(label.item())  # 确保转换为 Python int
+
     
 # 图像预处理
 transform = transforms.Compose([

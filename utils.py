@@ -78,11 +78,8 @@ def plot(recon_imgs, timesteps, epoch):
         plt.clf()
     plt.close()
 
-def generate(unet:nn.Module,
-             noise_scheduler:DDPMScheduler,
-             epoch:int):
-    
-    latents = torch.rand((2,1,config.target_size,config.target_size)).to(config.device)
+def generate(vae: torch.nn.Module, unet: torch.nn.Module, noise_scheduler: DDPMScheduler, epoch: int):
+    latents = torch.randn((2, config.latent_channels, 16, 16)).to(config.device)
     labels = torch.arange(2).to(config.device)
     for time in tqdm(noise_scheduler.timesteps):
         with torch.no_grad():

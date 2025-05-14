@@ -8,13 +8,18 @@ class TrainingConfig():
     def __init__(self):
         # 数据集路径配置
         self.root_path = r"F:\DL_DataSet\MedMNIST\pneumoniamnist" # 原始数据集的根目录路径
-        self.unet_model_output_dir = r'./unet_output'  # UNet模型输出目录（用于保存模型、日志等）
         self.plot_path = r'./plots'  # 训练过程可视化图表保存路径
         
         # VAE（变分自编码器）相关路径配置
         self.vae_path = r'./vae'  # VAE模型根目录
         self.vae_plot_path = r'./vae/plot'  # VAE训练过程可视化图表保存路径
         self.vae_checkpoints_path = r'./vae/checkpoints'  # VAE模型检查点保存路径
+        
+        # unet相关路径配置
+        self.unet_path = r'./unet'  # UNet模型输出目录（用于保存模型、日志等）
+        self.unet_plot_path = r'./unet/plot'  # VAE训练过程可视化图表保存路径
+        self.unet_checkpoints_path = r'./unet/checkpoints'  # VAE模型检查点保存路径
+        
         
         # 设备配置
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # 自动选择可用的设备（优先使用GPU）
@@ -23,7 +28,7 @@ class TrainingConfig():
         # 模型架构参数
         self.in_channels = 1  # 输入图像的通道数（灰度图为1）
         self.out_channels = 1  # 输出图像的通道数
-        self.latent_channels = 8  # 潜在空间的通道数（用于VAE等模型）
+        self.latent_channels = 4  # 潜在空间的通道数（用于VAE等模型）
         
         # 图像尺寸配置
         self.img_size = 64  # 原始数据集中的图像尺寸
