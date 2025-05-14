@@ -24,7 +24,7 @@ def train_vae():
     create_path_if_not_exists(config.vae_plot_path)    
     create_path_if_not_exists(config.vae_checkpoints_path)
     
-    
+    vae.to(config.device)
     vae_optimizer = optim.AdamW(vae.parameters(),lr=config.lr_vae)
     epoch_train_losses = [] # 记录每一轮的训练损失，用于绘制损失曲线
     epoch_test_losses = []
