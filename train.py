@@ -59,7 +59,7 @@ def train_vae():
         
         torch.save(vae.state_dict(),f=os.path.join(config.vae_checkpoints_path,f'vae_epoch{epoch + 1}.pth'))
         
-        plot_side_by_side(images, outputs.sample, posterior.latent_dist.sample(), epoch+1)
+        plot_side_by_side(images, outputs, latent_images.latent_dist.sample(), epoch+1)
         
         # ================测试部分====================
         vae.eval()
@@ -75,7 +75,7 @@ def train_vae():
                 outputs = outputs.sample
                 
                 # 计算测试集的损失
-                vae_loss = compute_vae_loss(images,outputs,posterior)
+                vae_loss = compute_vae_loss(images,outputs,posterior.latent_dist)
                 losses.append(vae_loss.item())
                 
             avg_loss = np.mean(losses)
@@ -96,6 +96,10 @@ def train_unet():
     create_path_if_not_exists(config.unet_plot_path)    
     create_path_if_not_exists(config.unet_checkpoints_path)
     
+    epoch_train_losses = [] # 记录每一轮的训练损失，用于绘制损失曲线
+    epoch_test_losses = []
+    
+    vae.to(config.device)
     vae.load_state_dict(torch.load(os.path.join(config.vae_checkpoints_path,f'vae_epoch{config.vae_epochs}.pth')))
     
     # 初始化DDPM噪声调度器，设置去噪时间步长
@@ -126,9 +130,9 @@ def train_unet():
     # 打印训练设备信息
     print_device(config.device)
         
-    model.to(config.device)
+    unet.to(config.device)
     
-    model.train()
+    unet.train()
     for epoch in range(config.num_epochs):
         losses = []
         for step,(clean_images,labels) in enumerate(tqdm(train_loader)):
@@ -138,8 +142,10 @@ def train_unet():
             # 获取数据标签，并移动到训练设备上
             labels = labels.to(config.device)
             
+            latents = vae.encode(clean_images).latent_dist.sample()
+            
             # 生成一份与原始数据形状相同的随机噪声
-            noise = torch.randn(clean_images.shape).to(config.device)
+            noise = torch.randn(latents.shape).to(config.device)
             
             # 获取当前批次的样本数据
             bs = clean_images.shape[0]
@@ -149,7 +155,7 @@ def train_unet():
 
             
             # 根据每个时间步长的噪声幅度，向干净的潜在表示中添加噪声
-            noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+            noisy_images = noise_scheduler.add_noise(latents, noise, timesteps)
             
             optimizer.zero_grad()
             noise_pred =  unet(sample=noisy_images, timestep=timesteps, encoder_hidden_states=None, class_labels=labels)
@@ -162,13 +168,15 @@ def train_unet():
             ema_model.step(model.parameters())
             
             losses.append(loss.item())
-            
+        
+        avg_loss = np.mean(losses)
+        epoch_train_losses.append(avg_loss)
         # 打印当前epoch的训练损失
-        print(f'Epoch: {epoch+1}, Train loss: {np.mean(losses)}')
+        print(f'Epoch: {epoch+1}, Train loss: {avg_loss}')
         
-        generate(unet,noise_scheduler,epoch)
+        generate(vae,unet,noise_scheduler,epoch)
         
-        torch.save(unet.state_dict(), f=os.path.join(config.unet_path,f'unet_epoch{epoch + 1}.pth'))
+        torch.save(unet.state_dict(), f=os.path.join(config.unet_checkpoints_path,f'unet_epoch{epoch + 1}.pth'))
         
         test_losses = []
         with torch.no_grad():
@@ -176,13 +184,15 @@ def train_unet():
             for step, (test_images,test_labels) in enumerate(tqdm(test_loader)):
                 test_images = test_images.to(config.device)
                 test_labels = test_labels.to(config.device)
+
+                latents = vae.encode(test_images).latent_dist.sample()
                 
-                test_noise = torch.rand(test_images.shape).to(config.device)
+                test_noise = torch.rand(latents.shape).to(config.device)
                 test_bs = test_images.shape[0]
                 
                 test_timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, 
                                                size=(test_bs,), device=config.device).long()
-                test_noise_images = noise_scheduler.add_noise(test_images,test_noise,test_timesteps)
+                test_noise_images = noise_scheduler.add_noise(latents,test_noise,test_timesteps)
                 
                 test_noise_pred = unet(sample = test_noise_images,
                                        timestep = test_timesteps,
@@ -194,15 +204,20 @@ def train_unet():
                 test_loss = F.mse_loss(test_noise_pred,test_noise)
                 
                 test_losses.append(test_loss.item())
-                
-            print(f'Epoch: {epoch+1}, Test loss: {np.mean(test_losses)}')
+            
+            avg_loss = np.mean(test_losses)
+            epoch_test_losses.append(avg_loss)
+            print(f'Epoch: {epoch+1}, Test loss: {avg_loss}')
         
     
-    draw_loss(train_losses=losses,test_losses=test_losses)
-
+    train_plot_title = 'UNET Training Loss'
+    test_plot_title = 'UNET  Test Loss'
+    plot_loss_curve(epoch_train_losses,train_plot_title,os.path.join(config.unet_plot_path,f'{train_plot_title}.png'))
+    plot_loss_curve(epoch_test_losses,test_plot_title,os.path.join(config.unet_plot_path,f'{test_plot_title}.png'))
+    draw_loss(epoch_train_losses,epoch_test_losses,save_path=config.unet_plot_path)
 
 if __name__ == '__main__':
-    train_vae()
+    train_unet()
     
         
             

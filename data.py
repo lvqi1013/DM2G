@@ -32,6 +32,10 @@ labels = train_dataset.labels
 labels = [int(x) for x in labels.flatten()]
 train_dataset.labels = labels
 
+labels = test_dataset.labels
+labels = [int(x) for x in labels.flatten()]
+test_dataset.labels = labels
+
 # train_dataset = IntLabelDataset(train_dataset)
 # test_dataset = IntLabelDataset(test_dataset)
 

@@ -28,7 +28,6 @@ def create_path_if_not_exists(path):
     
 def draw_loss(train_losses,test_losses,save_path = None):
     
-    create_path_if_not_exists(config.plot_path)
     
     plt.figure(figsize=(16,8))
     
@@ -66,16 +65,15 @@ def revert_images(imgs: torch.tensor) -> np.array:
 
 
 def plot(recon_imgs, timesteps, epoch):
-    create_path_if_not_exists(os.path.join(config.plot_path, f'epoch_{epoch}'))
+    create_path_if_not_exists(os.path.join(config.unet_plot_path, f'epoch_{epoch}'))
     recon_imgs = revert_images(recon_imgs.sample)
     fig,axs = plt.subplots(1,2)
     for i in range(2):
-        axs[i//2][i%2].imshow(recon_imgs[i], cmap='gray')
-        axs[i//2][i%2].axis('off')  
-        axs[i//2][i%2].set_title(str(i))
+        axs[i].imshow(recon_imgs[i], cmap='gray')
+        axs[i].axis('off')  
+        axs[i].set_title(str(i))
         plt.suptitle(f"Timesteps: {timesteps}")
-        plt.savefig(os.path.join(config.plot_path, f'epoch_{epoch}', f'plot {timesteps}.png'))
-        plt.clf()
+        plt.savefig(os.path.join(config.unet_plot_path, f'epoch_{epoch}', f'plot {timesteps}.png'))
     plt.close()
 
 def generate(vae: torch.nn.Module, unet: torch.nn.Module, noise_scheduler: DDPMScheduler, epoch: int):
@@ -83,8 +81,10 @@ def generate(vae: torch.nn.Module, unet: torch.nn.Module, noise_scheduler: DDPMS
     labels = torch.arange(2).to(config.device)
     for time in tqdm(noise_scheduler.timesteps):
         with torch.no_grad():
-            noise_pred = unet(latents,labels,encoder_hidden_states = None).sample()
-            recon_imgs = noise_scheduler.step(noise_pred, time, latents).prev_sample
+            noise_pred = unet(latents,time,class_labels = labels,encoder_hidden_states = None).sample
+            latents = noise_scheduler.step(noise_pred, time, latents).prev_sample
+            recon_imgs = vae.decode(latents)
+            
             if time == 999 or time % 100 == 0:
                 plot(recon_imgs, time, epoch)
 
@@ -129,7 +129,6 @@ def plot_side_by_side(images_y: torch.tensor, images_pred: torch.tensor,
     idx = np.random.randint(0, images_y.shape[0])
     fig, axs = plt.subplots(1, 2)
     
-    # Plot input image and Output image
     axs[0].imshow(images_y[idx], cmap='gray')
     axs[0].axis('off')  
     axs[0].set_title("Input")
@@ -143,12 +142,11 @@ def plot_side_by_side(images_y: torch.tensor, images_pred: torch.tensor,
     latent_channels = latents.shape[1]
     fig, axs = plt.subplots(1, 4)
 
-    # Plot the different latent channels
     for i in range(latent_channels):
         axs[i].imshow(latents[idx, i, :, :], cmap='gray')
         axs[i].axis('off')  
         axs[i].set_title(f"Latent channel: {i}", fontsize=8)       
-    plt.savefig(os.path.join(config.vae_plots_path, f'epoch_{epoch}_latent_channels.png'))
+    plt.savefig(os.path.join(config.vae_plot_path, f'epoch_{epoch}_latent_channels.png'))
     plt.clf()
     
 
